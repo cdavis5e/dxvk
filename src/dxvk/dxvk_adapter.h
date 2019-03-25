@@ -114,6 +114,16 @@ namespace dxvk {
     }
     
     /**
+     * \brief Supported device extensions
+     *
+     * Queries the supported device extensions.
+     * \returns Device extensions
+     */
+    const DxvkNameSet& extensions() const {
+      return m_deviceExtensions;
+    }
+    
+    /**
      * \brief Retrieves memory heap info
      * 
      * Returns properties of all available memory heaps,

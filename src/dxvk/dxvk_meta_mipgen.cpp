@@ -1,6 +1,8 @@
+#include "dxvk_device.h"
 #include "dxvk_meta_mipgen.h"
 
 #include <dxvk_mipgen_vert.h>
+#include <dxvk_mipgen_layer_vert.h>
 #include <dxvk_mipgen_geom.h>
 #include <dxvk_mipgen_frag_1d.h>
 #include <dxvk_mipgen_frag_2d.h>
@@ -184,11 +186,15 @@ namespace dxvk {
   }
   
   
-  DxvkMetaMipGenObjects::DxvkMetaMipGenObjects(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd         (vkd),
+  DxvkMetaMipGenObjects::DxvkMetaMipGenObjects(DxvkDevice* device)
+  : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
-    m_shaderVert  (createShaderModule(dxvk_mipgen_vert)),
-    m_shaderGeom  (createShaderModule(dxvk_mipgen_geom)),
+    m_shaderVert  (device->extensions().extShaderViewportIndexLayer
+      ? createShaderModule(dxvk_mipgen_layer_vert)
+      : createShaderModule(dxvk_mipgen_vert)),
+    m_shaderGeom  (device->extensions().extShaderViewportIndexLayer
+      ? VK_NULL_HANDLE
+      : createShaderModule(dxvk_mipgen_geom)),
     m_shaderFrag1D(createShaderModule(dxvk_mipgen_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_mipgen_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_mipgen_frag_3d)) {
@@ -209,7 +215,8 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFrag3D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFrag2D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFrag1D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
+    if (m_shaderGeom != VK_NULL_HANDLE)
+      m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
     
     m_vkd->vkDestroySampler(m_vkd->device(), m_sampler, nullptr);
@@ -408,28 +415,33 @@ namespace dxvk {
     vsStage.pName               = "main";
     vsStage.pSpecializationInfo = nullptr;
     
-    VkPipelineShaderStageCreateInfo& gsStage = stages[1];
-    gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    gsStage.pNext               = nullptr;
-    gsStage.flags               = 0;
-    gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
-    gsStage.module              = m_shaderGeom;
-    gsStage.pName               = "main";
-    gsStage.pSpecializationInfo = nullptr;
-    
-    VkPipelineShaderStageCreateInfo& psStage = stages[2];
-    psStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    psStage.pNext               = nullptr;
-    psStage.flags               = 0;
-    psStage.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
-    psStage.module              = VK_NULL_HANDLE;
-    psStage.pName               = "main";
-    psStage.pSpecializationInfo = nullptr;
+    VkPipelineShaderStageCreateInfo* psStage;
+    if (m_shaderGeom) {
+      VkPipelineShaderStageCreateInfo& gsStage = stages[1];
+      gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      gsStage.pNext               = nullptr;
+      gsStage.flags               = 0;
+      gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
+      gsStage.module              = m_shaderGeom;
+      gsStage.pName               = "main";
+      gsStage.pSpecializationInfo = nullptr;
+      
+      psStage = &stages[2];
+    } else {
+      psStage = &stages[1];
+    }
+    psStage->sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    psStage->pNext               = nullptr;
+    psStage->flags               = 0;
+    psStage->stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+    psStage->module              = VK_NULL_HANDLE;
+    psStage->pName               = "main";
+    psStage->pSpecializationInfo = nullptr;
     
     switch (imageViewType) {
-      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: psStage.module = m_shaderFrag1D; break;
-      case VK_IMAGE_VIEW_TYPE_2D_ARRAY: psStage.module = m_shaderFrag2D; break;
-      case VK_IMAGE_VIEW_TYPE_3D:       psStage.module = m_shaderFrag3D; break;
+      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: psStage->module = m_shaderFrag1D; break;
+      case VK_IMAGE_VIEW_TYPE_2D_ARRAY: psStage->module = m_shaderFrag2D; break;
+      case VK_IMAGE_VIEW_TYPE_3D:       psStage->module = m_shaderFrag3D; break;
       default: throw DxvkError("DxvkMetaMipGenObjects: Invalid view type");
     }
     
@@ -458,7 +470,7 @@ namespace dxvk {
     iaState.sType               = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     iaState.pNext               = nullptr;
     iaState.flags               = 0;
-    iaState.topology            = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    iaState.topology            = m_shaderGeom ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
     iaState.primitiveRestartEnable = VK_FALSE;
     
     VkPipelineViewportStateCreateInfo vpState;
@@ -525,7 +537,7 @@ namespace dxvk {
     info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.stageCount             = stages.size();
+    info.stageCount             = m_shaderGeom ? stages.size() : 2;
     info.pStages                = stages.data();
     info.pVertexInputState      = &viState;
     info.pInputAssemblyState    = &iaState;

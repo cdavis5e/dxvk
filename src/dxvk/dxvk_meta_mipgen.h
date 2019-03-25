@@ -165,7 +165,7 @@ namespace dxvk {
     
   public:
     
-    DxvkMetaMipGenObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaMipGenObjects(DxvkDevice* device);
     ~DxvkMetaMipGenObjects();
     
     /**

@@ -101,7 +101,7 @@ namespace dxvk {
 
   public:
 
-    DxvkMetaCopyObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaCopyObjects(DxvkDevice* device);
     ~DxvkMetaCopyObjects();
 
     /**

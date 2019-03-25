@@ -13,6 +13,7 @@ dxvk_shaders = files([
   'shaders/dxvk_clear_image3d_f.comp',
   
   'shaders/dxvk_copy_vert.vert',
+  'shaders/dxvk_copy_layer_vert.vert',
   'shaders/dxvk_copy_geom.geom',
   'shaders/dxvk_copy_color_1d.frag',
   'shaders/dxvk_copy_color_2d.frag',
@@ -22,6 +23,7 @@ dxvk_shaders = files([
   'shaders/dxvk_copy_depth_ms.frag',
 
   'shaders/dxvk_mipgen_vert.vert',
+  'shaders/dxvk_mipgen_layer_vert.vert',
   'shaders/dxvk_mipgen_geom.geom',
   'shaders/dxvk_mipgen_frag_1d.frag',
   'shaders/dxvk_mipgen_frag_2d.frag',

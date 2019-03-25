@@ -2,6 +2,7 @@
 #include "dxvk_meta_resolve.h"
 
 #include <dxvk_copy_vert.h>
+#include <dxvk_copy_layer_vert.h>
 #include <dxvk_copy_geom.h>
 #include <dxvk_resolve_frag_f.h>
 #include <dxvk_resolve_frag_f_amd.h>
@@ -106,8 +107,12 @@ namespace dxvk {
   DxvkMetaResolveObjects::DxvkMetaResolveObjects(DxvkDevice* device)
   : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
-    m_shaderVert  (createShaderModule(dxvk_copy_vert)),
-    m_shaderGeom  (createShaderModule(dxvk_copy_geom)),
+    m_shaderVert  (device->extensions().extShaderViewportIndexLayer
+      ? createShaderModule(dxvk_copy_layer_vert)
+      : createShaderModule(dxvk_copy_vert)),
+    m_shaderGeom  (device->extensions().extShaderViewportIndexLayer
+      ? VK_NULL_HANDLE
+      : createShaderModule(dxvk_copy_geom)),
     m_shaderFragF (device->extensions().amdShaderFragmentMask
       ? createShaderModule(dxvk_resolve_frag_f_amd)
       : createShaderModule(dxvk_resolve_frag_f)),
@@ -128,7 +133,8 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFragF, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFragI, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFragU, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
+    if (m_shaderGeom != VK_NULL_HANDLE)
+      m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
 
     m_vkd->vkDestroySampler(m_vkd->device(), m_sampler, nullptr);
@@ -329,28 +335,33 @@ namespace dxvk {
     vsStage.pName               = "main";
     vsStage.pSpecializationInfo = nullptr;
     
-    VkPipelineShaderStageCreateInfo& gsStage = stages[1];
-    gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    gsStage.pNext               = nullptr;
-    gsStage.flags               = 0;
-    gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
-    gsStage.module              = m_shaderGeom;
-    gsStage.pName               = "main";
-    gsStage.pSpecializationInfo = nullptr;
-    
-    VkPipelineShaderStageCreateInfo& psStage = stages[2];
-    psStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    psStage.pNext               = nullptr;
-    psStage.flags               = 0;
-    psStage.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
-    psStage.module              = m_shaderFragF;
-    psStage.pName               = "main";
-    psStage.pSpecializationInfo = &specInfo;
+    VkPipelineShaderStageCreateInfo* psStage;
+    if (m_shaderGeom) {
+      VkPipelineShaderStageCreateInfo& gsStage = stages[1];
+      gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      gsStage.pNext               = nullptr;
+      gsStage.flags               = 0;
+      gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
+      gsStage.module              = m_shaderGeom;
+      gsStage.pName               = "main";
+      gsStage.pSpecializationInfo = nullptr;
+      
+      psStage = &stages[2];
+    } else {
+      psStage = &stages[1];
+    }
+    psStage->sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    psStage->pNext               = nullptr;
+    psStage->flags               = 0;
+    psStage->stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+    psStage->module              = m_shaderFragF;
+    psStage->pName               = "main";
+    psStage->pSpecializationInfo = &specInfo;
 
     if (formatInfo->flags.test(DxvkFormatFlag::SampledUInt))
-      psStage.module            = m_shaderFragU;
+      psStage->module            = m_shaderFragU;
     else if (formatInfo->flags.test(DxvkFormatFlag::SampledSInt))
-      psStage.module            = m_shaderFragI;
+      psStage->module            = m_shaderFragI;
     
     std::array<VkDynamicState, 2> dynStates = {{
       VK_DYNAMIC_STATE_VIEWPORT,
@@ -444,7 +455,7 @@ namespace dxvk {
     info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.stageCount             = stages.size();
+    info.stageCount             = m_shaderGeom ? stages.size() : 2;
     info.pStages                = stages.data();
     info.pVertexInputState      = &viState;
     info.pInputAssemblyState    = &iaState;

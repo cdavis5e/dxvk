@@ -1699,7 +1699,10 @@ namespace dxvk {
         0, sizeof(pushConstants),
         &pushConstants);
       
-      m_cmd->cmdDraw(1, passExtent.depth, 0, 0);
+      m_cmd->cmdDraw(
+        m_device->extensions().extShaderViewportIndexLayer ? 3 : 1,
+        passExtent.depth,
+        0, 0);
       m_cmd->cmdEndRenderPass();
     }
     
@@ -2688,7 +2691,10 @@ namespace dxvk {
       0, sizeof(srcCoordOffset),
       &srcCoordOffset);
     
-    m_cmd->cmdDraw(1, tgtSubresource.layerCount, 0, 0);
+    m_cmd->cmdDraw(
+      m_device->extensions().extShaderViewportIndexLayer ? 3 : 1,
+      tgtSubresource.layerCount,
+      0, 0);
     m_cmd->cmdEndRenderPass();
 
     m_barriers.accessImage(

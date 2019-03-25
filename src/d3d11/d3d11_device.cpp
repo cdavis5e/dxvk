@@ -1407,7 +1407,7 @@ namespace dxvk {
     DxvkDeviceFeatures supported = adapter->features();
     DxvkDeviceFeatures enabled   = {};
 
-    enabled.core.features.geometryShader                          = VK_TRUE;
+    enabled.core.features.geometryShader                          = !adapter->extensions().supports(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats       = VK_TRUE;
     enabled.core.features.shaderStorageImageWriteWithoutFormat    = VK_TRUE;
@@ -1443,6 +1443,7 @@ namespace dxvk {
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
       enabled.core.features.fullDrawIndexUint32                   = VK_TRUE;
+      enabled.core.features.geometryShader                        = VK_TRUE;
       enabled.core.features.logicOp                               = supported.core.features.logicOp;
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
