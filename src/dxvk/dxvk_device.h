@@ -402,6 +402,46 @@ namespace dxvk {
      */
     void waitForIdle();
     
+    /**
+     * \brief Returns objects used by clear commands.
+     *
+     * If they haven't been created yet, this method will
+     * create them.
+     */
+    Rc<DxvkMetaClearObjects>& getMetaClearObjects();
+    
+    /**
+     * \brief Returns objects used by copy commands.
+     *
+     * If they haven't been created yet, this method will
+     * create them.
+     */
+    Rc<DxvkMetaCopyObjects>& getMetaCopyObjects();
+    
+    /**
+     * \brief Returns objects used by multisample resolve commands.
+     *
+     * If they haven't been created yet, this method will
+     * create them.
+     */
+    Rc<DxvkMetaResolveObjects>& getMetaResolveObjects();
+    
+    /**
+     * \brief Returns objects used by mipmap generation commands.
+     *
+     * If they haven't been created yet, this method will
+     * create them.
+     */
+    Rc<DxvkMetaMipGenObjects>& getMetaMipGenObjects();
+    
+    /**
+     * \brief Returns objects used by depth/stencil packing commands.
+     *
+     * If they haven't been created yet, this method will
+     * create them.
+     */
+    Rc<DxvkMetaPackObjects>& getMetaPackObjects();
+    
   private:
     
     std::string                 m_clientApi;

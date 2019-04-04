@@ -34,12 +34,7 @@ namespace dxvk {
       const Rc<DxvkDevice>&             device,
       const Rc<DxvkPipelineManager>&    pipelineManager,
       const Rc<DxvkGpuEventPool>&       gpuEventPool,
-      const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
-      const Rc<DxvkMetaClearObjects>&   metaClearObjects,
-      const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
-      const Rc<DxvkMetaResolveObjects>& metaResolveObjects,
-      const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
-      const Rc<DxvkMetaPackObjects>&    metaPackObjects);
+      const Rc<DxvkGpuQueryPool>&       gpuQueryPool);
     ~DxvkContext();
     
     /**
@@ -947,11 +942,11 @@ namespace dxvk {
     const Rc<DxvkDevice>              m_device;
     const Rc<DxvkPipelineManager>     m_pipeMgr;
     const Rc<DxvkGpuEventPool>        m_gpuEvents;
-    const Rc<DxvkMetaClearObjects>    m_metaClear;
-    const Rc<DxvkMetaCopyObjects>     m_metaCopy;
-    const Rc<DxvkMetaResolveObjects>  m_metaResolve;
-    const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
-    const Rc<DxvkMetaPackObjects>     m_metaPack;
+    Rc<DxvkMetaClearObjects>          m_metaClear;
+    Rc<DxvkMetaCopyObjects>           m_metaCopy;
+    Rc<DxvkMetaResolveObjects>        m_metaResolve;
+    Rc<DxvkMetaMipGenObjects>         m_metaMipGen;
+    Rc<DxvkMetaPackObjects>           m_metaPack;
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkDescriptorPool>  m_descPool;

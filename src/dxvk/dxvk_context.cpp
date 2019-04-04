@@ -10,20 +10,15 @@ namespace dxvk {
     const Rc<DxvkDevice>&             device,
     const Rc<DxvkPipelineManager>&    pipelineManager,
     const Rc<DxvkGpuEventPool>&       gpuEventPool,
-    const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
-    const Rc<DxvkMetaClearObjects>&   metaClearObjects,
-    const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
-    const Rc<DxvkMetaResolveObjects>& metaResolveObjects,
-    const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
-    const Rc<DxvkMetaPackObjects>&    metaPackObjects)
+    const Rc<DxvkGpuQueryPool>&       gpuQueryPool)
   : m_device      (device),
     m_pipeMgr     (pipelineManager),
     m_gpuEvents   (gpuEventPool),
-    m_metaClear   (metaClearObjects),
-    m_metaCopy    (metaCopyObjects),
-    m_metaResolve (metaResolveObjects),
-    m_metaMipGen  (metaMipGenObjects),
-    m_metaPack    (metaPackObjects),
+    m_metaClear   (nullptr),
+    m_metaCopy    (nullptr),
+    m_metaResolve (nullptr),
+    m_metaMipGen  (nullptr),
+    m_metaPack    (nullptr),
     m_barriers    (DxvkCmdBuffer::ExecBuffer),
     m_transfers   (DxvkCmdBuffer::InitBuffer),
     m_transitions (DxvkCmdBuffer::ExecBuffer),
@@ -391,6 +386,9 @@ namespace dxvk {
 
     if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
+    
+    if (m_metaClear == nullptr)
+      m_metaClear = m_device->getMetaClearObjects();
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearBufferPipeline(
@@ -1074,6 +1072,9 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
 
+    if (m_metaPack == nullptr)
+      m_metaPack = m_device->getMetaPackObjects();
+
     // Retrieve compute pipeline for the given format
     auto pipeInfo = m_metaPack->getPackPipeline(format);
 
@@ -1186,6 +1187,9 @@ namespace dxvk {
 
     if (m_barriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read))
       m_barriers.recordCommands(m_cmd);
+    
+    if (m_metaPack == nullptr)
+      m_metaPack = m_device->getMetaPackObjects();
     
     // Retrieve compute pipeline for the given format
     auto pipeInfo = m_metaPack->getUnpackPipeline(
@@ -1648,6 +1652,9 @@ namespace dxvk {
     passInfo.renderArea       = VkRect2D { };
     passInfo.clearValueCount  = 0;
     passInfo.pClearValues     = nullptr;
+    
+    if (m_metaMipGen == nullptr)
+      m_metaMipGen = m_device->getMetaMipGenObjects();
     
     // Retrieve a compatible pipeline to use for rendering
     DxvkMetaMipGenPipeline pipeInfo = m_metaMipGen->getPipeline(
@@ -2364,6 +2371,9 @@ namespace dxvk {
           DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
+    if (m_metaClear == nullptr)
+      m_metaClear = m_device->getMetaClearObjects();
+    
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
       imageView->type(), imageFormatInfo(imageView->info().format)->flags);
@@ -2529,6 +2539,9 @@ namespace dxvk {
       return;
     }
 
+    if (m_metaCopy == nullptr)
+      m_metaCopy = m_device->getMetaCopyObjects();
+    
     // Render target format to use for this copy
     VkFormat viewFormat = m_metaCopy->getCopyDestinationFormat(
       dstSubresource.aspectMask,
@@ -2851,6 +2864,9 @@ namespace dxvk {
     Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
       m_device->vkd(), dstImageView, srcImageView,
       dstImage->isFullSubresource(region.dstSubresource, region.extent));
+
+    if (m_metaResolve == nullptr)
+      m_metaResolve = m_device->getMetaResolveObjects();
 
     auto pipeInfo = m_metaResolve->getPipeline(
       format, srcImage->info().sampleCount);

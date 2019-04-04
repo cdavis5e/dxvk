@@ -21,11 +21,11 @@ namespace dxvk {
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
     m_gpuEventPool      (new DxvkGpuEventPool       (vkd)),
     m_gpuQueryPool      (new DxvkGpuQueryPool       (this)),
-    m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
-    m_metaCopyObjects   (new DxvkMetaCopyObjects    (this)),
-    m_metaResolveObjects(new DxvkMetaResolveObjects (this)),
-    m_metaMipGenObjects (new DxvkMetaMipGenObjects  (this)),
-    m_metaPackObjects   (new DxvkMetaPackObjects    (vkd)),
+    m_metaClearObjects  (nullptr),
+    m_metaCopyObjects   (nullptr),
+    m_metaResolveObjects(nullptr),
+    m_metaMipGenObjects (nullptr),
+    m_metaPackObjects   (nullptr),
     m_unboundResources  (this),
     m_submissionQueue   (this) {
     m_graphicsQueue.queueFamily = m_adapter->graphicsQueueFamily();
@@ -143,12 +143,7 @@ namespace dxvk {
     return new DxvkContext(this,
       m_pipelineManager,
       m_gpuEventPool,
-      m_gpuQueryPool,
-      m_metaClearObjects,
-      m_metaCopyObjects,
-      m_metaResolveObjects,
-      m_metaMipGenObjects,
-      m_metaPackObjects);
+      m_gpuQueryPool);
   }
 
 
@@ -298,6 +293,41 @@ namespace dxvk {
 
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       Logger::err("DxvkDevice: waitForIdle: Operation failed");
+  }
+  
+  
+  Rc<DxvkMetaClearObjects>& DxvkDevice::getMetaClearObjects() {
+    if (m_metaClearObjects == nullptr)
+      m_metaClearObjects = new DxvkMetaClearObjects(m_vkd);
+    return m_metaClearObjects;
+  }
+  
+  
+  Rc<DxvkMetaCopyObjects>& DxvkDevice::getMetaCopyObjects() {
+    if (m_metaCopyObjects == nullptr)
+      m_metaCopyObjects = new DxvkMetaCopyObjects(this);
+    return m_metaCopyObjects;
+  }
+  
+  
+  Rc<DxvkMetaResolveObjects>& DxvkDevice::getMetaResolveObjects() {
+    if (m_metaResolveObjects == nullptr)
+      m_metaResolveObjects = new DxvkMetaResolveObjects(this);
+    return m_metaResolveObjects;
+  }
+  
+  
+  Rc<DxvkMetaMipGenObjects>& DxvkDevice::getMetaMipGenObjects() {
+    if (m_metaMipGenObjects == nullptr)
+      m_metaMipGenObjects = new DxvkMetaMipGenObjects(this);
+    return m_metaMipGenObjects;
+  }
+  
+  
+  Rc<DxvkMetaPackObjects>& DxvkDevice::getMetaPackObjects() {
+    if (m_metaPackObjects == nullptr)
+      m_metaPackObjects = new DxvkMetaPackObjects(m_vkd);
+    return m_metaPackObjects;
   }
   
   
